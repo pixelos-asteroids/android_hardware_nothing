@@ -1,1 +1,1 @@
-type device_extras, domain;
+attribute device_extras_visible_type;

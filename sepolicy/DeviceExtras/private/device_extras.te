@@ -1,1 +1,4 @@
+type device_extras, domain;
+typeattribute device_extras device_extras_visible_type;
+
 extra_system_uid_app_domain(device_extras)
