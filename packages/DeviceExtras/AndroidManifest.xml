@@ -84,5 +84,10 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <service
+            android:name=".OTGModeSwitch"
+            android:exported="false">
+        </service>
     </application>
 </manifest>

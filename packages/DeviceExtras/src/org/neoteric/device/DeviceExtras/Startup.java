@@ -24,17 +24,18 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import androidx.preference.PreferenceManager;
 
+import org.neoteric.device.DeviceExtras.Constants;
+
 public class Startup extends BroadcastReceiver {
 
     @Override
     public void onReceive(final Context context, final Intent bootintent) { 
         boolean enabled = false;
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
-        enabled = sharedPrefs.getBoolean(DeviceExtras.KEY_OTG_SWITCH, false);
-        if (OTGModeSwitch.isSupported() && enabled) {
-        restore(OTGModeSwitch.FILE, enabled);
+        if (OTGModeSwitch.isSupported()) {
+            context.startService(new Intent(context.getApplicationContext(), OTGModeSwitch.class));
         }
-
+        Constants.CONTEXT = context.getApplicationContext();
     }
 
     private void restore(String file, boolean enabled) {

@@ -17,7 +17,12 @@
 */
 package org.neoteric.device.DeviceExtras;
 
+import android.content.Context;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.os.IBinder;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
 import androidx.preference.PreferenceManager;
@@ -25,20 +30,58 @@ import androidx.preference.PreferenceManager;
 import org.neoteric.device.DeviceExtras.DeviceExtras;
 
 public class OTGTileService extends TileService {
+
+    private final OTGModeSwitch.Listener chargingListener = charging -> updateState();
+
+    private boolean bound = false;
+    private OTGModeSwitch service;
+
+    private final ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder binder) {
+            service = ((OTGModeSwitch.LocalBinder) binder).getService();
+            bound = true;
+            service.addListener(chargingListener);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            bound = false;
+            service = null;
+        }
+    };
+
     @Override
     public void onStartListening() {
         super.onStartListening();
+        Intent intent = new Intent(this, OTGModeSwitch.class);
+        bindService(intent, connection, Context.BIND_AUTO_CREATE);
         updateState();
+    }
+
+    @Override
+    public void onStopListening() {
+        if (bound) {
+            service.removeListener(chargingListener);
+            unbindService(connection);
+            bound = false;
+        }
     }
 
     private void updateState() {
         Tile mTile = getQsTile();
         if (mTile != null) {
-            boolean enabled = getEnabled();
-            mTile.setSubtitle(enabled ?
-                    getString(R.string.accessibility_quick_settings_on) :
-                    getString(R.string.accessibility_quick_settings_off));
-            mTile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+            boolean available = OTGModeSwitch.isAvailable();
+            if (available) { 
+                boolean enabled = getEnabled();
+                mTile.setSubtitle(enabled ?
+                        getString(R.string.accessibility_quick_settings_on) :
+                        getString(R.string.accessibility_quick_settings_off));
+                mTile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+            } else {
+                mTile.setState(Tile.STATE_UNAVAILABLE);
+                mTile.setSubtitle(getString(R.string.accessibility_quick_settings_unavailable));
+            }
             mTile.updateTile();
         }
     }

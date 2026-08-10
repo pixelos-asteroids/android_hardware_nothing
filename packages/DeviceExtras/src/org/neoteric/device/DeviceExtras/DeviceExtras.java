@@ -20,9 +20,12 @@
 package org.neoteric.device.DeviceExtras;
 
 import android.content.Context;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.MenuItem;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceManager;
@@ -36,7 +39,27 @@ import com.android.settingslib.widget.SettingsBasePreferenceFragment;
 public class DeviceExtras extends SettingsBasePreferenceFragment {
     public static final String KEY_OTG_SWITCH = "otg";
 
+    private boolean bound = false;
+    private OTGModeSwitch service;
+
     private static SwitchPreferenceCompat mOTGModeSwitch;
+    private final OTGModeSwitch.Listener chargingListener = charging -> setAvailable();
+
+    private final ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder binder) {
+            service = ((OTGModeSwitch.LocalBinder) binder).getService();
+            bound = true;
+            service.addListener(chargingListener);
+            setAvailable();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            bound = false;
+            service = null;
+        }
+    };
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -47,6 +70,7 @@ public class DeviceExtras extends SettingsBasePreferenceFragment {
         // OTG
         mOTGModeSwitch = findPreference(KEY_OTG_SWITCH);
         if (OTGModeSwitch.isSupported()) {
+            setAvailable();
             mOTGModeSwitch.setChecked(OTGModeSwitch.isCurrentlyEnabled());
             mOTGModeSwitch.setOnPreferenceChangeListener(new OTGModeSwitch());
         } else {
@@ -57,11 +81,22 @@ public class DeviceExtras extends SettingsBasePreferenceFragment {
     @Override
     public void onResume() {
         super.onResume();
+        Intent intent = new Intent(Constants.CONTEXT, OTGModeSwitch.class);
+        Constants.CONTEXT.bindService(intent, connection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     public void onPause() {
+        if (bound) {
+            service.removeListener(chargingListener);
+            Constants.CONTEXT.unbindService(connection);
+            bound = false;
+        }
         super.onPause();
+    }
+
+    private void setAvailable() {
+        mOTGModeSwitch.setEnabled(OTGModeSwitch.isAvailable());
     }
 
     @Override
