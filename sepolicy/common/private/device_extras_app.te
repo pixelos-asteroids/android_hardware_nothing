@@ -1,5 +1,6 @@
 define(`extra_app_services', `
 allow $1 {
+  app_function_service
   activity_service
   activity_task_service
   audio_service
